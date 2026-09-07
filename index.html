@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b5797">
+<title>Jobtracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <h1>Jobtracker</h1>
+  <nav>
+    <button class="tab" data-view="submit" aria-current="true">Skicka in</button>
+    <button class="tab" data-view="matches">Träffar</button>
+    <button class="tab" data-view="settings">Inställningar</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Skicka in ------------------------------------------------------------->
+  <section id="view-submit">
+    <p class="hint">
+      Klistra in en <strong>länk</strong> till annonsen, eller hela
+      <strong>annonstexten</strong>. Text fungerar bättre på karriärsidor som
+      laddar innehållet med JavaScript.
+    </p>
+
+    <label for="payload">Länk eller annonstext</label>
+    <textarea id="payload" rows="10" placeholder="https://... &#10;&#10;— eller klistra in hela annonsen här —"></textarea>
+
+    <label for="jobtitle">Titel <span class="muted">(valfritt)</span></label>
+    <input id="jobtitle" type="text" placeholder="t.ex. Frontend-utvecklare, Acme AB">
+
+    <p id="detected" class="detected"></p>
+
+    <button id="send" class="primary">Skicka till jobtracker</button>
+    <p id="submit-status" class="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <!-- Träffar --------------------------------------------------------------->
+  <section id="view-matches" hidden>
+    <button id="refresh" class="secondary">Uppdatera</button>
+    <p id="matches-status" class="status" role="status" aria-live="polite"></p>
+    <div id="matches"></div>
+  </section>
+
+  <!-- Inställningar --------------------------------------------------------->
+  <section id="view-settings" hidden>
+    <p class="hint">
+      Token sparas <strong>endast på den här telefonen</strong> (localStorage). Den
+      finns aldrig i appens källkod eller på servern.
+    </p>
+
+    <label for="owner">GitHub-användare</label>
+    <input id="owner" type="text" autocomplete="off" spellcheck="false">
+
+    <label for="repo">Repo</label>
+    <input id="repo" type="text" autocomplete="off" spellcheck="false">
+
+    <label for="token">Fine-grained token</label>
+    <input id="token" type="password" autocomplete="off" spellcheck="false"
+           placeholder="github_pat_...">
+    <p class="hint muted">
+      Behörigheter: <em>Contents: read and write</em> samt
+      <em>Actions: read and write</em>, begränsat till detta repo.
+    </p>
+
+    <button id="save-settings" class="primary">Spara</button>
+    <button id="test-settings" class="secondary">Testa anslutning</button>
+    <p id="settings-status" class="status" role="status" aria-live="polite"></p>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
