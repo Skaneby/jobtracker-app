@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v3 (förhandsgranska + godkänn)';
+const APP_VERSION = 'v3.1 (självuppdaterande)';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -623,7 +623,17 @@ function init() {
   applyShareTarget();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* appen funkar ändå */ });
+    // Gammal cache visade en föråldrad app två gånger idag. Därför: kolla efter ny
+    // version vid varje start, och när den nya tagit över — ladda om en gång.
+    // (Inte vid allra första installationen: då fanns ingen gammal version.)
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js')
+      .then((reg) => reg.update())
+      .catch(() => { /* appen funkar ändå */ });
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController && !reloaded) { reloaded = true; location.reload(); }
+    });
   }
 }
 
