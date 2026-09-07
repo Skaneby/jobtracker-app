@@ -9,6 +9,7 @@
  */
 'use strict';
 
+const APP_VERSION = 'v2 (redigering + sök/ersätt)';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -264,9 +265,15 @@ async function loadMatches() {
     const [jobs, index, draftFiles] = await Promise.all([
       readRepoJson(settings, 'data/matched_jobs.json'),
       readRepoJson(settings, 'data/drive_index.json').catch(() => null),
-      listDrafts(settings).catch(() => []),
+      listDrafts(settings),
     ]);
     $('matches').innerHTML = renderMatches(jobs, index || {}, draftFiles || []);
+    if (jobs && jobs.length && (!draftFiles || !draftFiles.length)) {
+      status.className = 'status error';
+      status.textContent =
+        'Kunde inte läsa drafts/ — kontrollera att token har Contents: read and write.';
+      return;
+    }
 
     // Knapparna skapas dynamiskt, så lyssnaren sätts efter renderingen.
     for (const button of $('matches').querySelectorAll('[data-edit]')) {
@@ -521,6 +528,7 @@ function init() {
     }
   });
 
+  $('app-version').textContent = APP_VERSION;
   applyShareTarget();
 
   if ('serviceWorker' in navigator) {
