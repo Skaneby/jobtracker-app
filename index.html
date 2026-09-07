@@ -48,6 +48,47 @@
     <div id="matches"></div>
   </section>
 
+  <!-- Redigera --------------------------------------------------------------->
+  <section id="view-editor" hidden>
+    <button id="editor-back" class="secondary">&larr; Tillbaka till träffar</button>
+
+    <h2 id="editor-title"></h2>
+    <p id="editor-path" class="meta"></p>
+
+    <details id="findreplace">
+      <summary>Sök och ersätt</summary>
+      <div class="fr-grid">
+        <label for="fr-find">Sök efter</label>
+        <input id="fr-find" type="text" autocomplete="off" spellcheck="false">
+
+        <label for="fr-replace">Ersätt med</label>
+        <input id="fr-replace" type="text" autocomplete="off" spellcheck="false">
+
+        <label class="checkbox">
+          <input id="fr-case" type="checkbox"> Skiftlägeskänslig
+        </label>
+
+        <div class="fr-buttons">
+          <button id="fr-count" class="secondary">Räkna träffar</button>
+          <button id="fr-next" class="secondary">Hitta nästa</button>
+          <button id="fr-all" class="secondary">Ersätt alla</button>
+        </div>
+        <p id="fr-status" class="status" role="status" aria-live="polite"></p>
+      </div>
+    </details>
+
+    <label for="editor-text">Innehåll (Markdown)</label>
+    <textarea id="editor-text" rows="22" spellcheck="true"></textarea>
+
+    <button id="editor-save" class="primary">Spara till repot</button>
+    <button id="editor-revert" class="secondary">Ångra mina ändringar</button>
+    <p id="editor-status" class="status" role="status" aria-live="polite"></p>
+    <p class="hint muted">
+      Sparade ändringar hamnar i repot. Kör <code>export_to_drive_folder.py</code>
+      på datorn för att uppdatera kopian i Drive.
+    </p>
+  </section>
+
   <!-- Inställningar --------------------------------------------------------->
   <section id="view-settings" hidden>
     <p class="hint">
@@ -62,11 +103,21 @@
     <input id="repo" type="text" autocomplete="off" spellcheck="false">
 
     <label for="token">Fine-grained token</label>
-    <input id="token" type="password" autocomplete="off" spellcheck="false"
+    <input id="token" type="password" spellcheck="false"
+           autocomplete="new-password" data-1p-ignore data-lpignore="true"
+           name="jobtracker-token-no-autofill"
            placeholder="github_pat_...">
+    <label class="checkbox">
+      <input id="token-show" type="checkbox"> Visa token
+    </label>
     <p class="hint muted">
-      Behörigheter: <em>Contents: read and write</em> samt
-      <em>Actions: read and write</em>, begränsat till detta repo.
+      Skapa en här:
+      <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">
+        github.com/settings/personal-access-tokens/new</a><br>
+      Repository access: <em>Only select repositories</em> &rarr; <code>jobtracker</code>.<br>
+      Behörighet: <em>Contents: Read and write</em> (räcker — Actions behövs inte).<br>
+      Token börjar med <code>github_pat_</code>. Fyller webbläsaren i ett sparat
+      lösenord i stället får du <code>401</code> — bocka i "Visa token" och kontrollera.
     </p>
 
     <button id="save-settings" class="primary">Spara</button>

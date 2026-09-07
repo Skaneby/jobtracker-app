@@ -44,6 +44,10 @@ header {
 
 h1 { font-size: 1.15rem; margin: 0 0 10px; }
 
+/* Appen är mobilförst. På en bred skärm centreras innehållet i stället för att
+   sträckas ut över hela fönstret. */
+header > * { max-width: 720px; margin-left: auto; margin-right: auto; }
+
 nav { display: flex; gap: 8px; }
 
 .tab {
@@ -115,3 +119,55 @@ button:disabled { opacity: 0.55; cursor: default; }
 .job a { color: var(--accent); }
 .meta { font-size: 0.82rem; color: var(--muted); }
 .docs { margin-top: 9px; font-size: 0.88rem; }
+
+/* Editor och sök/ersätt */
+h2 { font-size: 1.05rem; margin: 16px 0 2px; }
+
+details#findreplace {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 14px;
+  background: var(--card);
+}
+
+details#findreplace summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.fr-grid label { margin-top: 10px; }
+.fr-grid .checkbox { font-weight: 400; display: flex; align-items: center; gap: 8px; }
+.fr-grid .checkbox input { width: auto; }
+
+.fr-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.fr-buttons button { flex: 1; min-width: 110px; font-size: 0.85rem; padding: 10px 8px; }
+
+#editor-text {
+  min-height: 380px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.link-button {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  background: var(--bg);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
