@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v3.1 (självuppdaterande)';
+const APP_VERSION = 'v3.2';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -177,7 +177,10 @@ async function onSend() {
   try {
     await dispatch(settings, buildPayload(raw, $('jobtitle').value));
     status.className = 'status ok';
-    status.textContent = 'Skickat. Utkasten dyker upp i Drive om någon minut.';
+    // Nästa steg är att GRANSKA i appen — inte Drive. Drive får bara det färdiga.
+    status.textContent =
+      'Skickat. Om 1–2 minuter finns annonsen under Träffar med CV och brev att granska ' +
+      '(tryck Uppdatera där). Word och PDF hamnar i Drive automatiskt efter det.';
     $('payload').value = '';
     $('jobtitle').value = '';
     $('detected').textContent = '';
