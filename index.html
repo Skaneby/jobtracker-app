@@ -43,6 +43,12 @@
 
   <!-- Träffar --------------------------------------------------------------->
   <section id="view-matches" hidden>
+    <ol class="howto">
+      <li><strong>Öppna</strong> en annons nedan för att se CV:t och brevet som färdiga dokument.</li>
+      <li><strong>Redigera text</strong> om något ska ändras, och <strong>Spara</strong>.</li>
+      <li><strong>Godkänn</strong> när du är nöjd. Word och PDF ligger i Drive inom 15 min,
+          under <em>privat/arbete och kunder</em>.</li>
+    </ol>
     <button id="refresh" class="secondary">Uppdatera</button>
     <p id="matches-status" class="status" role="status" aria-live="polite"></p>
     <div id="matches"></div>
@@ -54,6 +60,13 @@
 
     <h2 id="editor-title"></h2>
     <p id="editor-path" class="meta"></p>
+
+    <div class="mode-row">
+      <button id="mode-preview" class="secondary" aria-pressed="true">Förhandsgranska</button>
+      <button id="mode-edit" class="secondary" aria-pressed="false">Redigera text</button>
+    </div>
+
+    <div id="editor-preview" class="preview"></div>
 
     <details id="findreplace">
       <summary>Sök och ersätt</summary>
@@ -77,16 +90,15 @@
       </div>
     </details>
 
-    <label for="editor-text">Innehåll (Markdown)</label>
-    <textarea id="editor-text" rows="22" spellcheck="true"></textarea>
+    <div id="editor-edit-pane" hidden>
+      <label for="editor-text">Text (Markdown — rubriker med #, fetstil med **)</label>
+      <textarea id="editor-text" rows="22" spellcheck="true"></textarea>
+    </div>
 
-    <button id="editor-save" class="primary">Spara till repot</button>
+    <button id="editor-save" class="primary">Spara ändringar</button>
+    <button id="editor-approve" class="secondary">Godkänn detta dokument</button>
     <button id="editor-revert" class="secondary">Ångra mina ändringar</button>
     <p id="editor-status" class="status" role="status" aria-live="polite"></p>
-    <p class="hint muted">
-      Sparade ändringar hamnar i repot. Kopian i Drive (.docx och .pdf) uppdateras
-      automatiskt inom 15 minuter.
-    </p>
   </section>
 
   <!-- Inställningar --------------------------------------------------------->

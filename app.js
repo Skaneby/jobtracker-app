@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v2 (redigering + sök/ersätt)';
+const APP_VERSION = 'v3 (förhandsgranska + godkänn)';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -197,19 +197,6 @@ function escapeHtml(s) {
   ));
 }
 
-/* Drive-indexet nycklas på filsökväg (drafts/<datum>_<slug>_cv.md). */
-function driveLinksFor(index, title) {
-  const slug = String(title || '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-  const out = {};
-  for (const [path, entry] of Object.entries(index || {})) {
-    if (!path.includes(`_${slug}_`)) continue;
-    if (path.endsWith('_cv.md')) out.cv = entry;
-    if (path.endsWith('_brev.md')) out.brev = entry;
-  }
-  return out;
-}
-
 /* Samma slug-logik som common.py:slugify — måste hållas identisk. */
 function slugify(title) {
   return String(title || '')
@@ -223,32 +210,55 @@ function draftPathsFor(draftFiles, title) {
   for (const entry of draftFiles) {
     if (entry.name.endsWith(`_${slug}_cv.md`)) found.cv = entry.path;
     if (entry.name.endsWith(`_${slug}_brev.md`)) found.brev = entry.path;
+    if (entry.name.endsWith(`_${slug}_noteringar.md`)) found.notes = entry.path;
   }
   return found;
 }
 
-function renderMatches(jobs, index, draftFiles) {
+/* Status läses ur noteringsfilen: "**Status: GODKÄND 2026-09-07**" eller
+ * "**Status: VÄNTAR PÅ GODKÄNNANDE**". Samma fil hamnar i Drive, så statusen
+ * syns även där efter nästa synk. */
+function isApproved(notesText) {
+  return /Status:\s*GODKÄND/i.test(notesText || '');
+}
+
+function renderMatches(jobs, draftFiles, notesByPath) {
   if (!jobs || !jobs.length) return '<p class="hint">Inga träffar sparade än.</p>';
   return jobs.map((job) => {
-    const links = driveLinksFor(index, job.title);
     const drafts = draftPathsFor(draftFiles, job.title);
+    const approved = drafts.notes ? isApproved(notesByPath[drafts.notes]) : false;
+    const badge = drafts.cv
+      ? (approved ? '<span class="badge ok">Godkänd</span>' : '<span class="badge">Utkast</span>')
+      : '';
 
-    const docs = [];
-    if (links.cv?.doc_link) docs.push(`<a href="${escapeHtml(links.cv.doc_link)}" target="_blank" rel="noopener">CV i Drive</a>`);
-    if (links.brev?.doc_link) docs.push(`<a href="${escapeHtml(links.brev.doc_link)}" target="_blank" rel="noopener">Brev i Drive</a>`);
+    const open = [];
+    if (drafts.cv) open.push(`<button class="link-button" data-edit="${escapeHtml(drafts.cv)}" data-notes="${escapeHtml(drafts.notes || '')}" data-label="CV — ${escapeHtml(job.title)}">Öppna CV</button>`);
+    if (drafts.brev) open.push(`<button class="link-button" data-edit="${escapeHtml(drafts.brev)}" data-notes="${escapeHtml(drafts.notes || '')}" data-label="Brev — ${escapeHtml(job.title)}">Öppna brev</button>`);
+    if (drafts.notes && !approved) open.push(`<button class="link-button" data-approve="${escapeHtml(drafts.notes)}">Godkänn</button>`);
 
-    const edit = [];
-    if (drafts.cv) edit.push(`<button class="link-button" data-edit="${escapeHtml(drafts.cv)}" data-label="CV — ${escapeHtml(job.title)}">Redigera CV</button>`);
-    if (drafts.brev) edit.push(`<button class="link-button" data-edit="${escapeHtml(drafts.brev)}" data-label="Brev — ${escapeHtml(job.title)}">Redigera brev</button>`);
+    const folder = job.drive_folder
+      ? `<div class="meta">I Drive: privat/arbete och kunder/<strong>${escapeHtml(job.drive_folder)}</strong></div>`
+      : '';
 
     return `<article class="job">
-      <h3><a href="${escapeHtml(job.url)}" target="_blank" rel="noopener">${escapeHtml(job.title)}</a></h3>
+      <h3><a href="${escapeHtml(job.url)}" target="_blank" rel="noopener">${escapeHtml(job.title)}</a>${badge}</h3>
       <div class="meta">${escapeHtml(job.employer || '—')} · relevans ${escapeHtml(job.score ?? '—')}</div>
       <div class="meta">${escapeHtml((job.matched_keywords || []).join(', ') || '—')}</div>
-      <div class="docs">${edit.length ? edit.join(' · ') : '<span class="muted">Inga utkast än</span>'}</div>
-      ${docs.length ? `<div class="docs">${docs.join(' · ')}</div>` : ''}
+      ${folder}
+      <div class="docs">${open.length ? open.join(' · ') : '<span class="muted">Dokumenten genereras — kommer inom några minuter</span>'}</div>
     </article>`;
   }).join('');
+}
+
+/* Godkänn: skriv om statusraden i noteringsfilen. */
+async function approve(notesPath) {
+  const settings = loadSettings();
+  const file = await readRepoFile(settings, notesPath);
+  const today = new Date().toISOString().slice(0, 10);
+  const updated = /\*\*Status:[^*]*\*\*/.test(file.text)
+    ? file.text.replace(/\*\*Status:[^*]*\*\*/, `**Status: GODKÄND ${today}**`)
+    : `**Status: GODKÄND ${today}**\n\n${file.text}`;
+  await writeRepoFile(settings, notesPath, updated, file.sha, 'Godkänd från mobilen');
 }
 
 async function loadMatches() {
@@ -262,12 +272,10 @@ async function loadMatches() {
   status.className = 'status';
   status.textContent = 'Hämtar ...';
   try {
-    const [jobs, index, draftFiles] = await Promise.all([
+    const [jobs, draftFiles] = await Promise.all([
       readRepoJson(settings, 'data/matched_jobs.json'),
-      readRepoJson(settings, 'data/drive_index.json').catch(() => null),
       listDrafts(settings),
     ]);
-    $('matches').innerHTML = renderMatches(jobs, index || {}, draftFiles || []);
     if (jobs && jobs.length && (!draftFiles || !draftFiles.length)) {
       status.className = 'status error';
       status.textContent =
@@ -275,9 +283,26 @@ async function loadMatches() {
       return;
     }
 
-    // Knapparna skapas dynamiskt, så lyssnaren sätts efter renderingen.
+    // Status per annons ligger i noteringsfilerna — läs dem parallellt.
+    const notesPaths = (draftFiles || []).filter((e) => e.name.endsWith('_noteringar.md')).map((e) => e.path);
+    const notesByPath = {};
+    await Promise.all(notesPaths.map(async (p) => {
+      try { notesByPath[p] = (await readRepoFile(settings, p)).text; } catch { notesByPath[p] = ''; }
+    }));
+
+    $('matches').innerHTML = renderMatches(jobs, draftFiles || [], notesByPath);
+
+    // Knapparna skapas dynamiskt, så lyssnarna sätts efter renderingen.
     for (const button of $('matches').querySelectorAll('[data-edit]')) {
-      button.addEventListener('click', () => openEditor(button.dataset.edit, button.dataset.label));
+      button.addEventListener('click', () =>
+        openEditor(button.dataset.edit, button.dataset.label, button.dataset.notes));
+    }
+    for (const button of $('matches').querySelectorAll('[data-approve]')) {
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try { await approve(button.dataset.approve); await loadMatches(); }
+        catch (err) { status.className = 'status error'; status.textContent = err.message; }
+      });
     }
     status.textContent = jobs ? `${jobs.length} träffar.` : 'Inga data än.';
   } catch (err) {
@@ -290,17 +315,58 @@ async function loadMatches() {
 
 /* Aktuellt dokument i editorn. sha uppdateras efter varje sparning så att flera
  * sparningar i rad fungerar utan omladdning. */
-const editing = { path: null, sha: null, original: '', title: '' };
+const editing = { path: null, sha: null, original: '', title: '', notes: null };
 
-async function openEditor(path, title) {
+/* Minimal Markdown -> HTML för det Gemini skriver: rubriker, fetstil, kursiv,
+ * punktlistor, stycken, länkar och avdelare. Texten HTML-escapas först, så
+ * innehållet aldrig kan köra skript i appen. */
+function renderMarkdown(md) {
+  const inline = (t) => t
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+
+  let html = '', inList = false, para = [];
+  const flush = () => { if (para.length) { html += `<p>${inline(para.join(' '))}</p>`; para = []; } };
+  const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+
+  for (const raw of escapeHtml(md).split('\n')) {
+    const line = raw.trim();
+    const h = line.match(/^(#{1,3})\s+(.*)/);
+    if (h) { flush(); closeList(); const n = h[1].length; html += `<h${n}>${inline(h[2])}</h${n}>`; continue; }
+    const li = line.match(/^[-*]\s+(.*)/);
+    if (li) { flush(); if (!inList) { html += '<ul>'; inList = true; } html += `<li>${inline(li[1])}</li>`; continue; }
+    if (line === '&amp;nbsp;') { flush(); closeList(); html += '<p>&nbsp;</p>'; continue; }
+    if (/^-{3,}$/.test(line)) { flush(); closeList(); html += '<hr>'; continue; }
+    if (!line) { flush(); closeList(); continue; }
+    para.push(line);
+  }
+  flush(); closeList();
+  return html;
+}
+
+function setEditorMode(mode) {
+  const preview = mode === 'preview';
+  if (preview) $('editor-preview').innerHTML = renderMarkdown($('editor-text').value);
+  $('editor-preview').hidden = !preview;
+  $('editor-edit-pane').hidden = preview;
+  $('findreplace').hidden = preview;
+  $('mode-preview').setAttribute('aria-pressed', String(preview));
+  $('mode-edit').setAttribute('aria-pressed', String(!preview));
+}
+
+async function openEditor(path, title, notesPath) {
   const settings = loadSettings();
   const status = $('editor-status');
   showView('editor');
 
   $('editor-title').textContent = title;
-  $('editor-path').textContent = path;
+  $('editor-path').textContent = '';
   $('editor-text').value = '';
+  $('editor-preview').innerHTML = '';
   $('fr-status').textContent = '';
+  $('editor-approve').hidden = !notesPath;
   status.className = 'status';
   status.textContent = 'Hämtar ...';
 
@@ -310,7 +376,9 @@ async function openEditor(path, title) {
     editing.sha = file.sha;
     editing.original = file.text;
     editing.title = title;
+    editing.notes = notesPath || null;
     $('editor-text').value = file.text;
+    setEditorMode('preview');
     status.textContent = '';
   } catch (err) {
     status.className = 'status error';
@@ -340,7 +408,8 @@ async function saveEditor() {
     );
     editing.original = text;
     status.className = 'status ok';
-    status.textContent = 'Sparat i repot.';
+    status.textContent = 'Sparat. Word och PDF uppdateras i Drive inom 15 minuter.';
+    setEditorMode('preview');
   } catch (err) {
     status.className = 'status error';
     status.textContent = err.message;
@@ -463,6 +532,28 @@ function init() {
 
   $('editor-back').addEventListener('click', () => showView('matches'));
   $('editor-save').addEventListener('click', saveEditor);
+  $('mode-preview').addEventListener('click', () => setEditorMode('preview'));
+  $('mode-edit').addEventListener('click', () => setEditorMode('edit'));
+  $('editor-approve').addEventListener('click', async () => {
+    const status = $('editor-status');
+    if (!editing.notes) return;
+    if ($('editor-text').value !== editing.original) {
+      status.className = 'status error';
+      status.textContent = 'Spara dina ändringar först, godkänn sedan.';
+      return;
+    }
+    $('editor-approve').disabled = true;
+    try {
+      await approve(editing.notes);
+      status.className = 'status ok';
+      status.textContent = 'Godkänd. Syns som Godkänd i listan och i Noteringar.md i Drive.';
+    } catch (err) {
+      status.className = 'status error';
+      status.textContent = err.message;
+    } finally {
+      $('editor-approve').disabled = false;
+    }
+  });
   $('editor-revert').addEventListener('click', () => {
     $('editor-text').value = editing.original;
     $('editor-status').className = 'status';

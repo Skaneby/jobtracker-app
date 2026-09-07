@@ -171,3 +171,33 @@ code {
   padding: 1px 4px;
   border-radius: 4px;
 }
+
+/* Hur appen används */
+.howto { margin: 0 0 12px; padding-left: 20px; font-size: 0.88rem; color: var(--muted); }
+.howto li { margin-bottom: 4px; }
+.howto strong { color: var(--text); }
+
+/* Statusmärke per annons */
+.badge {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 9px; border-radius: 999px; margin-left: 6px; vertical-align: middle;
+  background: var(--line); color: var(--muted);
+}
+.badge.ok { background: var(--ok); color: #fff; }
+
+/* Förhandsgranskning — ska likna det färdiga dokumentet */
+.mode-row { display: flex; gap: 8px; margin-top: 12px; }
+.mode-row button { margin: 0; flex: 1; }
+.mode-row button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.preview {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 18px 20px; margin-top: 12px; line-height: 1.55; font-size: 0.95rem;
+}
+.preview h1 { font-size: 1.35rem; margin: 0 0 10px; }
+.preview h2 { font-size: 1.1rem; margin: 18px 0 6px; }
+.preview h3 { font-size: 1rem; margin: 14px 0 4px; }
+.preview p { margin: 0 0 10px; }
+.preview ul { margin: 0 0 10px; padding-left: 22px; }
+.preview hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+.preview a { color: var(--accent); }
