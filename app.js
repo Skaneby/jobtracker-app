@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v3.6';
+const APP_VERSION = 'v3.7';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -200,7 +200,8 @@ let lastSummary = '';
  * inskickning, så Contents-token räcker; workflowen lyssnar på run_scan. */
 async function scanNow() {
   const settings = loadSettings();
-  const status = $('matches-status');
+  // Egen statusrad: matches-status skrivs över av loadMatches vid varje Uppdatera.
+  const status = $('scan-status');
   if (!settings.token) {
     status.className = 'status error';
     status.textContent = 'Ingen token sparad. Gå till Inställningar först.';
@@ -251,9 +252,14 @@ function draftPathsFor(draftFiles, title) {
 function isApproved(notesText) {
   return /Status:\s*GODKÄND/i.test(notesText || '');
 }
+function isDismissed(notesText) {
+  return /Status:\s*AVFÄRDAD/i.test(notesText || '');
+}
 
-function renderMatches(jobs, draftFiles, notesByPath) {
-  if (!jobs || !jobs.length) return '<p class="hint">Inga träffar sparade än.</p>';
+function renderMatches(jobs, draftFiles, notesByPath, section = 'review') {
+  if (!jobs || !jobs.length) {
+    return section === 'review' ? '<p class="hint">Inget att granska just nu. Tryck "Sök nya annonser nu".</p>' : '';
+  }
   return jobs.map((job) => {
     const drafts = draftPathsFor(draftFiles, job.title);
     const approved = drafts.notes ? isApproved(notesByPath[drafts.notes]) : false;
@@ -269,7 +275,13 @@ function renderMatches(jobs, draftFiles, notesByPath) {
     const open = [];
     if (drafts.cv) open.push(`<button class="link-button" data-edit="${escapeHtml(drafts.cv)}" data-notes="${escapeHtml(drafts.notes || '')}" data-label="CV — ${escapeHtml(job.title)}">Öppna CV</button>`);
     if (drafts.brev) open.push(`<button class="link-button" data-edit="${escapeHtml(drafts.brev)}" data-notes="${escapeHtml(drafts.notes || '')}" data-label="Brev — ${escapeHtml(job.title)}">Öppna brev</button>`);
-    if (drafts.notes && !approved) open.push(`<button class="link-button" data-approve="${escapeHtml(drafts.notes)}">Godkänn</button>`);
+    if (drafts.notes && section === 'review') {
+      open.push(`<button class="link-button" data-approve="${escapeHtml(drafts.notes)}">Godkänn</button>`);
+      open.push(`<button class="link-button danger" data-dismiss="${escapeHtml(drafts.notes)}">Avfärda</button>`);
+    }
+    if (drafts.notes && section === 'dismissed') {
+      open.push(`<button class="link-button" data-restore="${escapeHtml(drafts.notes)}">Ta tillbaka</button>`);
+    }
 
     const folder = job.drive_folder
       ? `<div class="meta">I Drive: privat/arbete och kunder/<strong>${escapeHtml(job.drive_folder)}</strong></div>`
@@ -285,16 +297,21 @@ function renderMatches(jobs, draftFiles, notesByPath) {
   }).join('');
 }
 
-/* Godkänn: skriv om statusraden i noteringsfilen. */
-async function approve(notesPath) {
+/* Statusraden i noteringsfilen är sanningen: GODKÄND, AVFÄRDAD eller VÄNTAR.
+ * Samma fil hamnar i Drive, och den dagliga körningen läser den. */
+async function setStatus(notesPath, status, message) {
   const settings = loadSettings();
   const file = await readRepoFile(settings, notesPath);
   const today = new Date().toISOString().slice(0, 10);
+  const line = status === 'VÄNTAR' ? '**Status: VÄNTAR PÅ GODKÄNNANDE**' : `**Status: ${status} ${today}**`;
   const updated = /\*\*Status:[^*]*\*\*/.test(file.text)
-    ? file.text.replace(/\*\*Status:[^*]*\*\*/, `**Status: GODKÄND ${today}**`)
-    : `**Status: GODKÄND ${today}**\n\n${file.text}`;
-  await writeRepoFile(settings, notesPath, updated, file.sha, 'Godkänd från mobilen');
+    ? file.text.replace(/\*\*Status:[^*]*\*\*/, line)
+    : `${line}\n\n${file.text}`;
+  await writeRepoFile(settings, notesPath, updated, file.sha, message);
 }
+const approve = (notesPath) => setStatus(notesPath, 'GODKÄND', 'Godkänd från mobilen');
+const dismiss = (notesPath) => setStatus(notesPath, 'AVFÄRDAD', 'Avfärdad från mobilen');
+const restore = (notesPath) => setStatus(notesPath, 'VÄNTAR', 'Återställd från mobilen');
 
 async function loadMatches() {
   const settings = loadSettings();
@@ -325,7 +342,21 @@ async function loadMatches() {
       try { notesByPath[p] = (await readRepoFile(settings, p)).text; } catch { notesByPath[p] = ''; }
     }));
 
-    $('matches').innerHTML = renderMatches(jobs, draftFiles || [], notesByPath);
+    // Dela upp: att granska / godkända / avfärdade.
+    const statusOf = (job) => {
+      const d = draftPathsFor(draftFiles || [], job.title);
+      const t = d.notes ? notesByPath[d.notes] : '';
+      return isDismissed(t) ? 'dismissed' : isApproved(t) ? 'approved' : 'review';
+    };
+    const groups = { review: [], approved: [], dismissed: [] };
+    for (const job of (jobs || [])) groups[statusOf(job)].push(job);
+    $('matches').innerHTML = renderMatches(groups.review, draftFiles || [], notesByPath, 'review');
+    $('matches-approved').innerHTML = renderMatches(groups.approved, draftFiles || [], notesByPath, 'approved');
+    $('matches-dismissed').innerHTML = renderMatches(groups.dismissed, draftFiles || [], notesByPath, 'dismissed');
+    $('approved-count').textContent = groups.approved.length;
+    $('dismissed-count').textContent = groups.dismissed.length;
+    $('approved-section').hidden = groups.approved.length === 0;
+    $('dismissed-section').hidden = groups.dismissed.length === 0;
 
     // "Ingenting hände" när listan var oförändrad — säg vad som faktiskt gjordes.
     const seen = new Set(JSON.parse(localStorage.getItem('jobtracker.seen') || '[]'));
@@ -333,20 +364,25 @@ async function loadMatches() {
     try { localStorage.setItem('jobtracker.seen', JSON.stringify((jobs || []).map((j) => j.url || j.id))); } catch { /* ok */ }
     const when = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
     const news = seen.size === 0 ? '' : (fresh.length ? ` — ${fresh.length} nya sedan sist` : ' — inga nya sedan sist');
-    lastSummary = `Uppdaterad ${when}: ${(jobs || []).length} träffar${news}.`;
+    lastSummary = `Uppdaterad ${when}: ${groups.review.length} att granska, ${groups.approved.length} godkända${news}.`;
 
     // Knapparna skapas dynamiskt, så lyssnarna sätts efter renderingen.
-    for (const button of $('matches').querySelectorAll('[data-edit]')) {
+    for (const button of document.querySelectorAll('#view-matches [data-edit]')) {
       button.addEventListener('click', () =>
         openEditor(button.dataset.edit, button.dataset.label, button.dataset.notes));
     }
-    for (const button of $('matches').querySelectorAll('[data-approve]')) {
-      button.addEventListener('click', async () => {
-        button.disabled = true;
-        try { await approve(button.dataset.approve); await loadMatches(); }
-        catch (err) { status.className = 'status error'; status.textContent = err.message; }
-      });
-    }
+    const wire = (selector, action) => {
+      for (const button of document.querySelectorAll(`#view-matches ${selector}`)) {
+        button.addEventListener('click', async () => {
+          button.disabled = true;
+          try { await action(button.dataset.approve || button.dataset.dismiss || button.dataset.restore); await loadMatches(); }
+          catch (err) { status.className = 'status error'; status.textContent = err.message; }
+        });
+      }
+    };
+    wire('[data-approve]', approve);
+    wire('[data-dismiss]', dismiss);
+    wire('[data-restore]', restore);
     status.textContent = jobs ? lastSummary : 'Inga data än.';
   } catch (err) {
     status.className = 'status error';

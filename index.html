@@ -58,8 +58,18 @@
       <button id="scan-now" class="primary">Sök nya annonser nu</button>
       <button id="refresh" class="secondary">Uppdatera listan</button>
     </div>
+    <p id="scan-status" class="status" role="status" aria-live="polite"></p>
     <p id="matches-status" class="status" role="status" aria-live="polite"></p>
+    <h2 class="section-title">Att granska</h2>
     <div id="matches"></div>
+    <details id="approved-section" class="section" hidden>
+      <summary>Godkända / skickade (<span id="approved-count">0</span>)</summary>
+      <div id="matches-approved"></div>
+    </details>
+    <details id="dismissed-section" class="section" hidden>
+      <summary>Avfärdade (<span id="dismissed-count">0</span>) — försvinner vid nästa körning</summary>
+      <div id="matches-dismissed"></div>
+    </details>
   </section>
 
   <!-- Redigera --------------------------------------------------------------->

@@ -186,6 +186,10 @@ code {
 .badge.ok { background: var(--ok); color: #fff; }
 .badge.shared { background: var(--accent); color: #fff; }
 .badge.sector { background: #6b4fbb; color: #fff; }
+.section-title { font-size: 0.95rem; margin: 14px 0 6px; color: var(--muted); }
+details.section { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
+details.section summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; color: var(--muted); }
+details.section > div { margin-top: 10px; }
 
 /* Förhandsgranskning — ska likna det färdiga dokumentet */
 .mode-row { display: flex; gap: 8px; margin-top: 12px; }
@@ -203,3 +207,5 @@ code {
 .preview ul { margin: 0 0 10px; padding-left: 22px; }
 .preview hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
 .preview a { color: var(--accent); }
+
+.link-button.danger { color: var(--error); }
