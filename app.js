@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v3.4';
+const APP_VERSION = 'v3.5';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -336,10 +336,11 @@ function renderMarkdown(md) {
     .replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
 
   let html = '', inList = false, para = [];
-  const flush = () => { if (para.length) { html += `<p>${inline(para.join(' '))}</p>`; para = []; } };
+  const flush = () => { if (para.length) { html += `<p>${inline(para.join(' ').replace(/<br> /g, '<br>'))}</p>`; para = []; } };
   const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
 
   for (const raw of escapeHtml(md).split('\n')) {
+    const hardBreak = /  $/.test(raw);  // två blanksteg sist = radbrytning (Markdown)
     const line = raw.trim();
     const h = line.match(/^(#{1,3})\s+(.*)/);
     if (h) { flush(); closeList(); const n = h[1].length; html += `<h${n}>${inline(h[2])}</h${n}>`; continue; }
@@ -348,7 +349,7 @@ function renderMarkdown(md) {
     if (line === '&amp;nbsp;') { flush(); closeList(); html += '<p>&nbsp;</p>'; continue; }
     if (/^-{3,}$/.test(line)) { flush(); closeList(); html += '<hr>'; continue; }
     if (!line) { flush(); closeList(); continue; }
-    para.push(line);
+    para.push(hardBreak ? line + '<br>' : line);
   }
   flush(); closeList();
   return html;
