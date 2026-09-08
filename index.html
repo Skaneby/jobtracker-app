@@ -54,7 +54,10 @@
       <li><strong>Godkänn</strong> när du är nöjd. Word och PDF ligger i Drive inom 15 min,
           under <em>privat/arbete och kunder</em>.</li>
     </ol>
-    <button id="refresh" class="secondary">Uppdatera</button>
+    <div class="mode-row">
+      <button id="scan-now" class="primary">Sök nya annonser nu</button>
+      <button id="refresh" class="secondary">Uppdatera listan</button>
+    </div>
     <p id="matches-status" class="status" role="status" aria-live="polite"></p>
     <div id="matches"></div>
   </section>
@@ -141,6 +144,8 @@
     <button id="test-settings" class="secondary">Testa anslutning</button>
     <p id="settings-status" class="status" role="status" aria-live="polite"></p>
     <p class="hint muted">Appversion: <span id="app-version">?</span></p>
+    <button id="force-update" class="secondary">Tvinga uppdatering av appen</button>
+    <p class="hint muted">Rensar appens cache och laddar om. Använd om versionen ovan inte är den senaste.</p>
   </section>
 </main>
 

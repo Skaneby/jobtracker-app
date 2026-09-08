@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v3.5';
+const APP_VERSION = 'v3.6';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -44,12 +44,12 @@ function apiHeaders(token) {
   };
 }
 
-async function dispatch(settings, clientPayload) {
+async function dispatch(settings, clientPayload, eventType = 'new_job_link') {
   const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/dispatches`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { ...apiHeaders(settings.token), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event_type: 'new_job_link', client_payload: clientPayload }),
+    body: JSON.stringify({ event_type: eventType, client_payload: clientPayload }),
   });
   // 204 No Content = accepterat. Allt annat är ett fel värt att visa.
   if (res.status !== 204) {
@@ -194,6 +194,33 @@ async function onSend() {
 
 /* ---------- träffar ----------------------------------------------------- */
 
+let lastSummary = '';
+
+/* Startar den dagliga skanningen från telefonen. Samma repository_dispatch som
+ * inskickning, så Contents-token räcker; workflowen lyssnar på run_scan. */
+async function scanNow() {
+  const settings = loadSettings();
+  const status = $('matches-status');
+  if (!settings.token) {
+    status.className = 'status error';
+    status.textContent = 'Ingen token sparad. Gå till Inställningar först.';
+    return;
+  }
+  $('scan-now').disabled = true;
+  status.className = 'status';
+  status.textContent = 'Startar sökning ...';
+  try {
+    await dispatch(settings, { source: 'app' }, 'run_scan');
+    status.className = 'status ok';
+    status.textContent = 'Sökning startad. Nya annonser och dokument dyker upp om 2–5 minuter — tryck Uppdatera listan då.';
+  } catch (err) {
+    status.className = 'status error';
+    status.textContent = err.message;
+  } finally {
+    $('scan-now').disabled = false;
+  }
+}
+
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -300,6 +327,14 @@ async function loadMatches() {
 
     $('matches').innerHTML = renderMatches(jobs, draftFiles || [], notesByPath);
 
+    // "Ingenting hände" när listan var oförändrad — säg vad som faktiskt gjordes.
+    const seen = new Set(JSON.parse(localStorage.getItem('jobtracker.seen') || '[]'));
+    const fresh = (jobs || []).filter((j) => !seen.has(j.url || j.id));
+    try { localStorage.setItem('jobtracker.seen', JSON.stringify((jobs || []).map((j) => j.url || j.id))); } catch { /* ok */ }
+    const when = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+    const news = seen.size === 0 ? '' : (fresh.length ? ` — ${fresh.length} nya sedan sist` : ' — inga nya sedan sist');
+    lastSummary = `Uppdaterad ${when}: ${(jobs || []).length} träffar${news}.`;
+
     // Knapparna skapas dynamiskt, så lyssnarna sätts efter renderingen.
     for (const button of $('matches').querySelectorAll('[data-edit]')) {
       button.addEventListener('click', () =>
@@ -312,7 +347,7 @@ async function loadMatches() {
         catch (err) { status.className = 'status error'; status.textContent = err.message; }
       });
     }
-    status.textContent = jobs ? `${jobs.length} träffar.` : 'Inga data än.';
+    status.textContent = jobs ? lastSummary : 'Inga data än.';
   } catch (err) {
     status.className = 'status error';
     status.textContent = err.message;
@@ -534,6 +569,21 @@ function init() {
   });
   $('send').addEventListener('click', onSend);
   $('refresh').addEventListener('click', loadMatches);
+  $('scan-now').addEventListener('click', scanNow);
+
+  // Tvinga uppdatering: bort med service worker och cache, ladda om från nätet.
+  $('force-update').addEventListener('click', async () => {
+    const status = $('settings-status');
+    status.className = 'status';
+    status.textContent = 'Rensar cache och laddar om ...';
+    try {
+      if ('serviceWorker' in navigator) {
+        for (const reg of await navigator.serviceWorker.getRegistrations()) await reg.unregister();
+      }
+      if ('caches' in window) for (const key of await caches.keys()) await caches.delete(key);
+    } catch { /* ladda om ändå */ }
+    location.reload();
+  });
 
   $('token-show').addEventListener('change', (e) => {
     $('token').type = e.target.checked ? 'text' : 'password';
