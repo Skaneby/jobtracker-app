@@ -185,6 +185,7 @@ code {
 }
 .badge.ok { background: var(--ok); color: #fff; }
 .badge.shared { background: var(--accent); color: #fff; }
+.badge.sector { background: #6b4fbb; color: #fff; }
 
 /* Förhandsgranskning — ska likna det färdiga dokumentet */
 .mode-row { display: flex; gap: 8px; margin-top: 12px; }

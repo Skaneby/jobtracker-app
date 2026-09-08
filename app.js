@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v3.3';
+const APP_VERSION = 'v3.4';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -231,11 +231,13 @@ function renderMatches(jobs, draftFiles, notesByPath) {
     const drafts = draftPathsFor(draftFiles, job.title);
     const approved = drafts.notes ? isApproved(notesByPath[drafts.notes]) : false;
     const badge = drafts.cv
-      ? (approved ? '<span class="badge ok">Godkänd</span>' : '<span class="badge">Utkast</span>')
+      ? (approved ? '<span class="badge status ok">Godkänd</span>' : '<span class="badge status">Utkast</span>')
       : '';
     // Inskickade från mobilen ligger alltid överst — visa varför.
     const shared = (job.source === 'delad-lank' || job.source === 'delad-text')
       ? '<span class="badge shared">Inskickad</span>' : '';
+    // Statliga arbetsgivare (orgnr 2021…) — det jobbastatligt.se visar, ur samma källa.
+    const sector = job.sector === 'statlig' ? '<span class="badge sector">Statligt</span>' : '';
 
     const open = [];
     if (drafts.cv) open.push(`<button class="link-button" data-edit="${escapeHtml(drafts.cv)}" data-notes="${escapeHtml(drafts.notes || '')}" data-label="CV — ${escapeHtml(job.title)}">Öppna CV</button>`);
@@ -247,7 +249,7 @@ function renderMatches(jobs, draftFiles, notesByPath) {
       : '';
 
     return `<article class="job">
-      <h3><a href="${escapeHtml(job.url)}" target="_blank" rel="noopener">${escapeHtml(job.title)}</a>${shared}${badge}</h3>
+      <h3><a href="${escapeHtml(job.url)}" target="_blank" rel="noopener">${escapeHtml(job.title)}</a>${shared}${sector}${badge}</h3>
       <div class="meta">${escapeHtml(job.employer || '—')} · relevans ${escapeHtml(job.score ?? '—')}</div>
       <div class="meta">${escapeHtml((job.matched_keywords || []).join(', ') || '—')}</div>
       ${folder}
