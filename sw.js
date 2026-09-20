@@ -6,7 +6,7 @@
  */
 'use strict';
 
-const CACHE = 'jobtracker-shell-v10';
+const CACHE = 'jobtracker-shell-v11';
 const SHELL = [
   '.',
   'index.html',

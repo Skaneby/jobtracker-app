@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v3.7';
+const APP_VERSION = 'v3.8';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -564,6 +564,72 @@ function replaceAll() {
   status.textContent = `Ersatte ${n} förekomst${n === 1 ? '' : 'er'}. Glöm inte att spara.`;
 }
 
+/* ---------- inställningar: sökord & jobbkällor -------------------------- */
+
+/* sha hålls i minnet mellan sökord- och källor-sparningar (samma fil,
+ * data/config.json) så att den andra sparningen inte skriver med en
+ * föråldrad sha och får ett onödigt 409-fel. */
+const configState = { sha: null, keywords: [], sources: [] };
+
+/* "Namn – https://..." per rad. Kräver mellanslag runt bindestrecket/tankstrecket
+ * före en http(s)-länk, så bindestreck inne i en URL inte tolkas som avskiljare. */
+function parseSources(text) {
+  return text.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
+    const withUrl = line.match(/^(.*?)\s[-–]\s(https?:\/\/.+)$/);
+    if (withUrl) return { name: withUrl[1].trim(), url: withUrl[2].trim() };
+    if (/^https?:\/\//i.test(line)) return { name: line, url: line };
+    return { name: line, url: '' };
+  });
+}
+
+function formatSources(sources) {
+  return (sources || []).map((s) => (s.url && s.url !== s.name ? `${s.name} – ${s.url}` : s.name)).join('\n');
+}
+
+async function loadConfigSettings() {
+  const settings = loadSettings();
+  const kwStatus = $('keywords-status');
+  if (!settings.token) return; // ingen token = inget att hämta med än
+  try {
+    const file = await readRepoFile(settings, 'data/config.json');
+    configState.sha = file.sha;
+    const data = JSON.parse(file.text);
+    configState.keywords = Array.isArray(data.keywords) ? data.keywords : [];
+    configState.sources = Array.isArray(data.sources) ? data.sources : [];
+    $('config-keywords').value = configState.keywords.join('\n');
+    $('config-sources').value = formatSources(configState.sources);
+  } catch (err) {
+    kwStatus.className = 'status error';
+    kwStatus.textContent = `Kunde inte läsa sökord/källor: ${err.message}`;
+  }
+}
+
+/* Skriver hela config.json (sökord + källor tillsammans, filen är gemensam)
+ * men uppdaterar bara det fält som faktiskt sparades. */
+async function saveConfigField(field, value, status, message) {
+  const settings = loadSettings();
+  if (!settings.token) {
+    status.className = 'status error';
+    status.textContent = 'Ingen token sparad. Fyll i GitHub-inställningarna ovan först.';
+    return;
+  }
+  if (configState.sha === null) await loadConfigSettings();
+
+  const next = { ...configState, [field]: value };
+  status.className = 'status';
+  status.textContent = 'Sparar ...';
+  try {
+    const text = JSON.stringify({ keywords: next.keywords, sources: next.sources }, null, 2) + '\n';
+    configState.sha = await writeRepoFile(settings, 'data/config.json', text, configState.sha, message);
+    configState[field] = value;
+    status.className = 'status ok';
+    status.textContent = 'Sparat. Gäller från nästa sökning.';
+  } catch (err) {
+    status.className = 'status error';
+    status.textContent = err.message;
+  }
+}
+
 /* ---------- delningsmål (Android) --------------------------------------- */
 
 /* manifestets share_target skickar hit ?title=&text=&url= när du delar från
@@ -589,6 +655,7 @@ function showView(name) {
     tab.setAttribute('aria-current', tab.dataset.view === name ? 'true' : 'false');
   }
   if (name === 'matches') loadMatches();
+  if (name === 'settings') loadConfigSettings();
 }
 
 function init() {
@@ -712,6 +779,15 @@ function init() {
       status.className = 'status error';
       status.textContent = err.message;
     }
+  });
+
+  $('save-keywords').addEventListener('click', () => {
+    const keywords = $('config-keywords').value.split('\n').map((s) => s.trim()).filter(Boolean);
+    saveConfigField('keywords', keywords, $('keywords-status'), 'Uppdaterade sökord från mobilen');
+  });
+  $('save-sources').addEventListener('click', () => {
+    const sources = parseSources($('config-sources').value);
+    saveConfigField('sources', sources, $('sources-status'), 'Uppdaterade jobbkällor från mobilen');
   });
 
   $('app-version').textContent = APP_VERSION;

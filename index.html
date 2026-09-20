@@ -156,6 +156,29 @@
     <p class="hint muted">Appversion: <span id="app-version">?</span></p>
     <button id="force-update" class="secondary">Tvinga uppdatering av appen</button>
     <p class="hint muted">Rensar appens cache och laddar om. Använd om versionen ovan inte är den senaste.</p>
+
+    <hr>
+
+    <h2 class="section-title">Sökord</h2>
+    <p class="hint">
+      Ett sökord per rad. Styr både vad som hämtas från Arbetsförmedlingen och vad
+      som räknas som en träff. Sparas i <code>data/config.json</code> i repot — gäller
+      från nästa körning.
+    </p>
+    <textarea id="config-keywords" rows="8" spellcheck="false" placeholder="react&#10;molnarkitektur&#10;..."></textarea>
+    <button id="save-keywords" class="primary">Spara sökord</button>
+    <p id="keywords-status" class="status" role="status" aria-live="polite"></p>
+
+    <h2 class="section-title">Jobbkällor</h2>
+    <p class="hint">
+      <strong>Arbetsförmedlingen</strong> är inbyggd och alltid aktiv. Nedan kan du
+      lista egna jobbsajter du vill hålla koll på — en per rad, format
+      <code>Namn – https://...</code>. Detta är just nu bara en lista i appen; ingen
+      automatisk sökning görs på dem än.
+    </p>
+    <textarea id="config-sources" rows="5" spellcheck="false" placeholder="Brainville – https://www.brainville.com/SE/Assignments"></textarea>
+    <button id="save-sources" class="primary">Spara källor</button>
+    <p id="sources-status" class="status" role="status" aria-live="polite"></p>
   </section>
 </main>
 
