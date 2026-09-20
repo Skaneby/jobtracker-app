@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v3.8';
+const APP_VERSION = 'v3.9';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 

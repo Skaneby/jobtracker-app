@@ -6,7 +6,7 @@
  */
 'use strict';
 
-const CACHE = 'jobtracker-shell-v11';
+const CACHE = 'jobtracker-shell-v12';
 const SHELL = [
   '.',
   'index.html',
@@ -43,8 +43,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Nätet först, cache som reserv — så en ny version syns direkt när du är online.
+  // no-store: annars kan requesten svaras ur webbläsarens EGEN http-cache (inte
+  // service workerns), vilket gav gammalt innehåll trots "Tvinga uppdatering".
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-store' })
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
