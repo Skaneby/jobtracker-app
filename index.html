@@ -171,12 +171,12 @@
 
     <h2 class="section-title">Jobbkällor</h2>
     <p class="hint">
-      <strong>Arbetsförmedlingen</strong> är inbyggd och alltid aktiv. Nedan kan du
-      lista egna jobbsajter du vill hålla koll på — en per rad, format
-      <code>Namn – https://...</code>. Detta är just nu bara en lista i appen; ingen
-      automatisk sökning görs på dem än.
+      <strong>Arbetsförmedlingen</strong> är inbyggd och alltid aktiv. Sajter nedan
+      med en skrapare (just nu <strong>Brainville</strong>) söks automatiskt i varje
+      körning; övriga är bokmärken. En per rad, format <code>Namn – https://...</code>.
     </p>
-    <textarea id="config-sources" rows="5" spellcheck="false" placeholder="Brainville – https://www.brainville.com/SE/Assignments"></textarea>
+    <ul id="sources-status-list" class="source-status" aria-label="Status per jobbkälla"></ul>
+    <textarea id="config-sources" rows="5" spellcheck="false" placeholder="Brainville – https://www.brainville.com/HittaKonsultuppdrag"></textarea>
     <button id="save-sources" class="primary">Spara källor</button>
     <p id="sources-status" class="status" role="status" aria-live="polite"></p>
   </section>

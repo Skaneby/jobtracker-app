@@ -9,7 +9,7 @@
  */
 'use strict';
 
-const APP_VERSION = 'v3.9';
+const APP_VERSION = 'v3.10';
 const STORE_KEY = 'jobtracker.settings';
 const DEFAULTS = { owner: 'Skaneby', repo: 'jobtracker', token: '' };
 
@@ -601,6 +601,36 @@ async function loadConfigSettings() {
   } catch (err) {
     kwStatus.className = 'status error';
     kwStatus.textContent = `Kunde inte läsa sökord/källor: ${err.message}`;
+  }
+  loadSourceStatus(settings);
+}
+
+/* Vad senaste körningen gjorde med varje källa (skrivs av scrape_marketplaces.py).
+   Filen saknas tills första körningen efter att en källa lagts till — då visas inget. */
+async function loadSourceStatus(settings) {
+  const list = $('sources-status-list');
+  list.replaceChildren();
+  let status;
+  try {
+    status = JSON.parse((await readRepoFile(settings, 'data/marketplace_status.json')).text);
+  } catch (err) {
+    return;
+  }
+  for (const [name, st] of Object.entries(status || {})) {
+    const li = document.createElement('li');
+    let text;
+    if (!st.searched) {
+      text = `${name}: ${st.note || 'bokmärke'}`;
+    } else if (st.ok) {
+      const when = st.fetched_at ? new Date(st.fetched_at).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      text = `${name}: söks automatiskt — ${st.count} uppdrag ${when}`.trim();
+      li.className = 'ok';
+    } else {
+      text = `${name}: skrapningen misslyckades — ${st.error || 'okänt fel'}`;
+      li.className = 'error';
+    }
+    li.textContent = text;
+    list.appendChild(li);
   }
 }
 
